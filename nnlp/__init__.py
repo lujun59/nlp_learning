@@ -1,5 +1,3 @@
-
-
 from nnlp.data.vocab import Vocab, build_vocab
 from nnlp.data.tokenizer import Tokenizer
 from nnlp.data.reader import Reader

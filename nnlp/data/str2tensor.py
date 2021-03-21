@@ -1,4 +1,3 @@
-
 import torch
 
 from allennlp.common import Registrable
@@ -11,18 +10,20 @@ class Text2Tensor(Registrable):
     def __call__(self, ):
         pass
 
+
 class MakeBatch(Registrable):
-    def __call__(self,):
+    def __call__(self, ):
         pass
+
 
 @Text2Tensor.register('label_sent2tensor')
 class LableSent2Tensor(Text2Tensor):
-    def __init__(self, 
-            vocab:Vocab,
-            tokenizer:Tokenizer=None, 
-            max_len:int = 80, 
-            with_lable:bool=False,
-            lable_type:str = 'float'):
+    def __init__(self,
+                 vocab: Vocab,
+                 tokenizer: Tokenizer = None,
+                 max_len: int = 80,
+                 with_lable: bool = False,
+                 lable_type: str = 'float'):
 
         self.tokenizer = tokenizer
         self.vocab = vocab
@@ -30,7 +31,7 @@ class LableSent2Tensor(Text2Tensor):
         self.with_lable = with_lable
         self.label_type = lable_type
 
-        assert lable_type in ('str','int','float')
+        assert lable_type in ('str', 'int', 'float')
 
     def __call__(self, text):
         '''
@@ -40,14 +41,14 @@ class LableSent2Tensor(Text2Tensor):
         ps = text.strip().split('\t')
         sent = ''
         tag = '0'
-        
+
         if self.with_lable:
             assert len(ps) == 2
             tag, sent = ps
         else:
             assert len(ps) == 1
             sent = text.strip()
-        
+
         if not sent:
             return None
         if not self.tokenizer:
@@ -66,22 +67,25 @@ class LableSent2Tensor(Text2Tensor):
         elif self.label_type == 'str':
             tag = self.vocab.get_token_id(tag)
 
-        meta = {'sent':sent, 'tokens': tokens, 'label':tag }
-        tokens_idx = [self.vocab.BOS] + [self.vocab.get_token_id(w) for w in tokens] + [self.vocab.EOS]
-        return (torch.tensor(tokens_idx, dtype=torch.long), torch.tensor(tag, dtype = tag_tensor_type), meta)
+        meta = {'sent': sent, 'tokens': tokens, 'label': tag}
+        tokens_idx = [self.vocab.BOS
+                      ] + [self.vocab.get_token_id(w)
+                           for w in tokens] + [self.vocab.EOS]
+        return (torch.tensor(tokens_idx, dtype=torch.long),
+                torch.tensor(tag, dtype=tag_tensor_type), meta)
 
 
 @MakeBatch.register('label_sent2batch')
 class LableSent2Batch(MakeBatch):
-    def __init__(self, pad_token_id:int):
+    def __init__(self, pad_token_id: int):
         self.pad_token_id = pad_token_id
-    
+
     def __call__(self, insts):
 
         max_len = 0
         token_idx_list = []
         tags = []
-        meta =[]
+        meta = []
         for t in insts:
             if not t: continue
             token_idx_list.append(t[0])
@@ -89,7 +93,9 @@ class LableSent2Batch(MakeBatch):
             meta.append(t[2])
             if max_len < len(t[0]):
                 max_len = len(t[0])
-        batch_token_idx = torch.full((len(token_idx_list), max_len), self.pad_token_id, dtype=torch.long)
+        batch_token_idx = torch.full((len(token_idx_list), max_len),
+                                     self.pad_token_id,
+                                     dtype=torch.long)
         for i, t in enumerate(token_idx_list):
             batch_token_idx[i, :len(t)] = t
         tags = torch.stack(tags)

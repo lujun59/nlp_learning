@@ -1,5 +1,3 @@
-
-
 import sys
 import json
 
@@ -10,8 +8,7 @@ from allennlp.common import Registrable
 from allennlp.common import Params
 from allennlp.common.util import params_from_file
 
-
-import utils.simplelogger as simplelogger 
+import utils.simplelogger as simplelogger
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -24,16 +21,16 @@ class ModelTrainer(Registrable, pl.LightningModule):
         super().__init__()
         pass
 
+
 @ModelTrainer.register('lm_trainer')
 class LMTrain(ModelTrainer):
-    def __init__(self, 
-        vocab: nnlp.Vocab,
-        train_dataset: nnlp.DataSet,
-        valid_dataset: nnlp.DataSet,
-        model: nnlp.Model,
-        out_path: str,
-        early_stop: bool = False
-        )->None:
+    def __init__(self,
+                 vocab: nnlp.Vocab,
+                 train_dataset: nnlp.DataSet,
+                 valid_dataset: nnlp.DataSet,
+                 model: nnlp.Model,
+                 out_path: str,
+                 early_stop: bool = False) -> None:
         super().__init__()
 
         self.mylogger = simplelogger.Logger(sys.stderr)
@@ -45,17 +42,20 @@ class LMTrain(ModelTrainer):
         collfn = nnlp.LableSent2Batch(vocab.PAD)
 
         self.vocab = vocab
-        self.train_data = torch_data.DataLoader(train_dataset, batch_size = 30, collate_fn=collfn)
-        self.valid_data = torch_data.DataLoader(valid_dataset, batch_size = 20, collate_fn=collfn)
+        self.train_data = torch_data.DataLoader(train_dataset,
+                                                batch_size=30,
+                                                collate_fn=collfn)
+        self.valid_data = torch_data.DataLoader(valid_dataset,
+                                                batch_size=20,
+                                                collate_fn=collfn)
         self.model = model
 
         self.callback_checkpoint = ModelCheckpoint(
-                                monitor="val_batch_loss",
-                                dirpath=f"{out_path}", filename='chk-{epoch:02d}-{step:03d}-{val_batch_loss:.2f}',
-                                save_top_k=20,
-                                mode='min'
-                                )
-        
+            monitor="val_batch_loss",
+            dirpath=f"{out_path}",
+            filename='chk-{epoch:02d}-{step:03d}-{val_batch_loss:.2f}',
+            save_top_k=20,
+            mode='min')
 
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
@@ -73,19 +73,18 @@ class LMTrain(ModelTrainer):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)
 
-    def run_train(self,):
-        trainer = pl.Trainer(
-            gpus = 1, auto_select_gpus=True,
-            precision = 16,
-            checkpoint_callback= self.callback_checkpoint,
-            accelerator='ddp',
-            max_epochs=1,
-            val_check_interval=2000,
-            accumulate_grad_batches = 4,
-            gradient_clip_val = 5.0
-        )
+    def run_train(self, ):
+        trainer = pl.Trainer(gpus=1,
+                             auto_select_gpus=True,
+                             precision=16,
+                             checkpoint_callback=self.callback_checkpoint,
+                             accelerator='ddp',
+                             max_epochs=1,
+                             val_check_interval=2000,
+                             accumulate_grad_batches=4,
+                             gradient_clip_val=5.0)
         trainer.fit(self, self.train_data, self.valid_data)
-        
+
 
 if __name__ == '__main__':
 
@@ -94,7 +93,5 @@ if __name__ == '__main__':
     params = params_from_file(cfg_path)
     print(json.dumps(dict(params.as_dict()), indent=2), file=sys.stderr)
 
-    lmt = ModelTrainer.from_params(Params(params=params) )
+    lmt = ModelTrainer.from_params(Params(params=params))
     lmt.run_train()
-
-    
