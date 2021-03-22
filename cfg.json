@@ -36,11 +36,21 @@ local reader = {
     },
    
     "model": {
-        "type": "lstm_lm",
+        "type": "bert_lm",
         "vocab": vocab_cfg,
-        "n_wemb": 256,
-        "n_hidden": 256,
-        "n_layer": 2
+
     },
-    "out_path":"out"
+    
+    "out_path":"out",
+
+    "train_params":{
+        "gpus": 1,
+        "auto_select_gpus":true,
+        
+        "accelerator": "ddp",
+        "max_epochs":1,
+        "val_check_interval": 200,
+        "accumulate_grad_batches": 4,
+        "gradient_clip_val": 5.0
+    }
 }

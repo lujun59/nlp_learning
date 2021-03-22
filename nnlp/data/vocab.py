@@ -19,7 +19,8 @@ class Vocab(Registrable):
         self.PAD = self.token2idx['<PAD>']
         self.SEP = self.token2idx['<SEP>']
 
-        self.load(path)
+        if path:
+            self.load(path)
 
     def add_token(self, t):
         assert t, f'token: <{t}> is not valid! '
@@ -32,8 +33,9 @@ class Vocab(Registrable):
         return idx
 
     def __len__(self, ):
-        assert len(self.token2idx) == len(self.idx2token)
-        return len(self.idx2token)
+        n = len(self.idx2token)
+        assert len(self.token2idx) == n
+        return n
 
     def get_token_id(self, t):
         return self.token2idx.get(t, self.UNK)
