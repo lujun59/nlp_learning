@@ -5,8 +5,7 @@ from typing import Dict
 import torch
 import torch.utils.data as torch_data
 
-from allennlp.common import Registrable
-from allennlp.common import Params
+from allennlp.common import Registrable, Params
 from allennlp.common.util import params_from_file
 
 import utils.simplelogger as simplelogger
@@ -26,9 +25,8 @@ class ModelTrainer(Registrable, pl.LightningModule):
 @ModelTrainer.register('lm_trainer')
 class LMTrain(ModelTrainer):
     def __init__(self,
-                 vocab: nnlp.Vocab,
-                 train_dataset: nnlp.DataSet,
-                 valid_dataset: nnlp.DataSet,
+                 train_dataloader: nnlp.DataLoader,
+                 valid_dataloader: nnlp.DataLoader,
                  model: nnlp.Model,
                  out_path: str,
                  early_stop: bool = False,
@@ -37,19 +35,12 @@ class LMTrain(ModelTrainer):
 
         self.mylogger = simplelogger.Logger(sys.stderr)
 
-        self.mylogger.info(f'vocab size: {len(vocab)}')
+        #self.mylogger.info(f'vocab size: {len(vocab)}')
         #self.mylogger.info(f'train data path: {train_data_path}')
         #self.mylogger.info(f'valid data path: {valid_data_path}')
 
-        collfn = nnlp.LableSent2Batch(vocab.PAD)
-
-        self.vocab = vocab
-        self.train_data = torch_data.DataLoader(train_dataset,
-                                                batch_size=10,
-                                                collate_fn=collfn)
-        self.valid_data = torch_data.DataLoader(valid_dataset,
-                                                batch_size=10,
-                                                collate_fn=collfn)
+        self.train_data = train_dataloader
+        self.valid_data = valid_dataloader
         self.model = model
         self.train_params = train_params
 

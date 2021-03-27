@@ -1,9 +1,7 @@
 import torch
 
-from allennlp.common import Registrable
-
-from nnlp.data.vocab import Vocab
-from nnlp.data.tokenizer import Tokenizer
+from allennlp.common import Registrable, Params
+import nnlp
 
 
 class Text2Tensor(Registrable):
@@ -19,8 +17,8 @@ class MakeBatch(Registrable):
 @Text2Tensor.register('label_sent2tensor')
 class LableSent2Tensor(Text2Tensor):
     def __init__(self,
-                 vocab: Vocab,
-                 tokenizer: Tokenizer = None,
+                 vocab: nnlp.Vocab,
+                 tokenizer: nnlp.Tokenizer = None,
                  max_len: int = 80,
                  with_lable: bool = False,
                  lable_type: str = 'float'):
@@ -77,8 +75,8 @@ class LableSent2Tensor(Text2Tensor):
 
 @MakeBatch.register('label_sent2batch')
 class LableSent2Batch(MakeBatch):
-    def __init__(self, pad_token_id: int):
-        self.pad_token_id = pad_token_id
+    def __init__(self):
+        self.pad_token_id = nnlp.Vocab().PAD
 
     def __call__(self, insts):
 

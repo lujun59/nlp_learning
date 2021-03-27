@@ -4,41 +4,53 @@ local vocab_cfg = {
     "path": "./wd/vocab.txt"
     };
 
-local strtensor = {
+local str2tensor = {
     "type": "label_sent2tensor",
     "vocab":vocab_cfg,
     "tokenizer":{
         "type": "space_tokenizer"
-    }, 
+    },
     "max_len": 80, 
     "with_lable":false
 };
 
-local reader = {
-    "type": "text_line_reader"
-};
-
-
 {
     "type":"lm_trainer",
-    "vocab": vocab_cfg,
-    "train_dataset":{
-        "type": "iter_text_dataset",
-        "inputs": "./wd/zh_train.txt", 
-        "str2tensor_fn": strtensor,
-        "read_fn": reader
+    "train_dataloader":{
+        "type":"dataloader",
+        "batch_size":10,
+        "dataset":{
+            "type": "iter_text_dataset",
+            "reader": {
+                "type": "text_line_reader",
+                "path": "./wd/zh_train.txt"
+            },
+            "str2tensor_fn": str2tensor
+        },
+        "collate_fn": {
+            "type":"label_sent2batch"
+        }
     },
-    "valid_dataset":{
-        "type": "iter_text_dataset",
-        "inputs": "./wd/zh_valid.txt", 
-        "str2tensor_fn": strtensor,
-        "read_fn": reader
+    "valid_dataloader":{
+        "type":"dataloader",
+        "batch_size":10,
+        "dataset":{
+            "type": "iter_text_dataset",
+            "reader": {
+                "type": "text_line_reader",
+                "path": "./wd/zh_valid.txt"
+            },
+            "str2tensor_fn": str2tensor
+        },
+        "collate_fn": {
+            "type":"label_sent2batch"
+        }
     },
-   
-    "model": {
-        "type": "bert_lm",
-        "vocab": vocab_cfg,
 
+    "model": {
+        "type": "lstm_lm",
+        "vocab": vocab_cfg,
+        "n_layer": 2
     },
     
     "out_path":"out",

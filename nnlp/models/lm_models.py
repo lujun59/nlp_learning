@@ -2,18 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from nnlp.models.model import Model
-from nnlp.data.vocab import Vocab
+import nnlp
 
 import transformers
 
 
-@Model.register('lstm_lm')
-class LSTMModel(Model):
+@nnlp.Model.register('lstm_lm')
+class LSTMModel(nnlp.Model):
     def __init__(self,
-                 vocab: Vocab,
-                 n_wemb: int,
-                 n_hidden: int,
+                 vocab: nnlp.Vocab,
+                 n_wemb: int = 128,
+                 n_hidden: int = 128,
                  n_layer: int = 1,
                  dropout: float = 0.2,
                  tie_weights: bool = False):
@@ -72,10 +71,10 @@ class LSTMModel(Model):
         return loss_batch, loss_inst, loss_token
 
 
-@Model.register('gpt2_lm')
-class GPT2Wrap(Model):
+@nnlp.Model.register('gpt2_lm')
+class GPT2Wrap(nnlp.Model):
     def __init__(self,
-                 vocab: Vocab,
+                 vocab: nnlp.Vocab,
                  n_embd: int = 256,
                  n_layer: int = 4,
                  n_head: int = 4,
@@ -122,10 +121,10 @@ class GPT2Wrap(Model):
         return loss_batch, loss_inst, loss_token
 
 
-@Model.register('bigpt2_lm')
-class BiGPT2LM(Model):
+@nnlp.Model.register('bigpt2_lm')
+class BiGPT2LM(nnlp.Model):
     def __init__(self,
-                 vocab: Vocab,
+                 vocab: nnlp.Vocab,
                  n_embd: int = 256,
                  n_layer: int = 2,
                  n_head: int = 2,
@@ -198,10 +197,10 @@ class BiGPT2LM(Model):
         return loss_batch, loss_line, loss_token
 
 
-@Model.register('bert_lm')
-class BERTLMModel(Model):
+@nnlp.Model.register('bert_lm')
+class BERTLMModel(nnlp.Model):
     def __init__(self,
-                 vocab: Vocab,
+                 vocab: nnlp.Vocab,
                  n_embd: int = 256,
                  n_layer: int = 4,
                  n_head: int = 4,

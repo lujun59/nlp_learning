@@ -1,9 +1,13 @@
-from allennlp.common import Registrable
-from allennlp.common import Params
+import sys
+from allennlp.common import Registrable, Params
+import utils.simplelogger as simplelogger
+
+#TODO: 单例模式避免重复构建词表
 
 
 class Vocab(Registrable):
     def __init__(self, path: str = None):
+        self.mylogger = simplelogger.Logger(sys.stderr)
 
         self.token2idx = {}
         self.idx2token = []
@@ -21,6 +25,8 @@ class Vocab(Registrable):
 
         if path:
             self.load(path)
+            self.mylogger.info(
+                f'vocab built, size: {len(self)} , from file: {path}')
 
     def add_token(self, t):
         assert t, f'token: <{t}> is not valid! '
