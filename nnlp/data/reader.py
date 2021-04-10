@@ -1,3 +1,4 @@
+import torch
 import torch.distributed as py_dist
 from allennlp.common import Registrable, Params
 
@@ -23,6 +24,14 @@ class LocalTextLineReader(Reader):
             wsize = py_dist.get_world_size()
             ddp_info = f'DDP: {backend} > {rank}/{wsize}'
         assert wsize >= 1 and rank < wsize
+
+        num_workers, worker_id = 1, 0
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info:
+            num_workers, worker_id = worker_info.num_workers, worker_info.id
+
+        wsize = wsize * num_workers
+        rank = rank * num_workers + worker_id
 
         with open(self.path, encoding='utf-8') as fin:
             idx = -1

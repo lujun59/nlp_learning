@@ -6,14 +6,14 @@ import utils.simplelogger as simplelogger
 
 
 class Vocab(Registrable):
-    def __init__(self, path: str = None):
+    def __init__(self, path: str = None, reserved_tokens: str = ''):
         self.mylogger = simplelogger.Logger(sys.stderr)
 
         self.token2idx = {}
         self.idx2token = []
 
-        special_tokens = '<BOS> <EOS> <MSK> <UNK> <PAD> <SEP>'.split()
-        for t in special_tokens:
+        special_tokens = '<BOS> <EOS> <MSK> <UNK> <PAD> <SEP> <CLS>' + reserved_tokens
+        for t in special_tokens.split():
             self.add_token(t)
 
         self.BOS = self.token2idx['<BOS>']
@@ -22,6 +22,7 @@ class Vocab(Registrable):
         self.UNK = self.token2idx['<UNK>']
         self.PAD = self.token2idx['<PAD>']
         self.SEP = self.token2idx['<SEP>']
+        self.SEP = self.token2idx['<CLS>']
 
         if path:
             self.load(path)
@@ -67,8 +68,8 @@ class Vocab(Registrable):
 
 @Vocab.register('vocab')
 class Vocab_inst(Vocab):
-    def __init__(self, path: str = None):
-        super().__init__(path)
+    def __init__(self, path: str = None, reserved_tokens: str = ''):
+        super().__init__(path, reserved_tokens)
 
 
 def build_vocab(path):

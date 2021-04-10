@@ -7,6 +7,7 @@ import torch.utils.data as torch_data
 
 from allennlp.common import Registrable, Params
 from allennlp.common.util import params_from_file
+from allennlp.optimizers import Optimizer
 
 import utils.simplelogger as simplelogger
 
@@ -16,14 +17,31 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 import nnlp
 
 
-class ModelTrainer(Registrable, pl.LightningModule):
+class Experiment(Registrable, pl.LightningModule):
     def __init__(self):
         super().__init__()
         pass
 
+    def model_export(self, fmt='torch', out_path: str = None):
+        assert fmt in ('torch', 'torchscript', 'onnx')
+        if fmt == 'torch':
+            assert out_path, 'pls give a valid model_export path'
+            torch.save(self.model.state_dict(), out_path)
+        elif fmt == 'torchscript':
+            pass
+        elif fmt == 'onnx':
+            pass
 
-@ModelTrainer.register('lm_trainer')
-class LMTrain(ModelTrainer):
+    def model_load(self, fmt='torch', in_path: str= None):
+        assert fmt in ('torch', 'torchscript', 'onnx')
+        if fmt == 'torch':
+            assert in_path
+            self.model.load_state_dict(torch.load(in_path))
+        
+    
+
+@Experiment.register('lm_trainer')
+class LMTrain(Experiment):
     def __init__(self,
                  train_dataloader: nnlp.DataLoader,
                  valid_dataloader: nnlp.DataLoader,
@@ -71,6 +89,8 @@ class LMTrain(ModelTrainer):
         trainer = pl.Trainer(**self.train_params,
                              checkpoint_callback=self.callback_checkpoint)
         trainer.fit(self, self.train_data, self.valid_data)
+    ######################################
+
 
 
 if __name__ == '__main__':
@@ -80,5 +100,5 @@ if __name__ == '__main__':
     params = params_from_file(cfg_path, 'jsonnet')
     print(json.dumps(dict(params.as_dict()), indent=2), file=sys.stderr)
 
-    lmt = ModelTrainer.from_params(Params(params=params))
+    lmt = Experiment.from_params(Params(params=params))
     lmt.run_train()
