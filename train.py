@@ -1,4 +1,9 @@
-import sys
+import sys, os
+
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(cur_dir)
+sys.path.append(cur_dir + '/3rdpylib')
+
 import json
 from typing import Dict
 
@@ -32,13 +37,12 @@ class Experiment(Registrable, pl.LightningModule):
         elif fmt == 'onnx':
             pass
 
-    def model_load(self, fmt='torch', in_path: str= None):
+    def model_load(self, fmt='torch', in_path: str = None):
         assert fmt in ('torch', 'torchscript', 'onnx')
         if fmt == 'torch':
             assert in_path
             self.model.load_state_dict(torch.load(in_path))
-        
-    
+
 
 @Experiment.register('lm_trainer')
 class LMTrain(Experiment):
@@ -65,7 +69,7 @@ class LMTrain(Experiment):
         self.callback_checkpoint = ModelCheckpoint(
             monitor="val_batch_loss",
             dirpath=f"{out_path}",
-            filename='chk-{epoch:02d}-{step:03d}-{val_batch_loss:.2f}',
+            filename='chk-{epoch:02d}-{step:06d}-{val_batch_loss:.2f}',
             save_top_k=20,
             mode='min')
 
@@ -83,14 +87,14 @@ class LMTrain(Experiment):
         return loss_batch
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
+        return torch.optim.Adam(self.parameters(), lr=1e-4)
 
     def run_train(self, ):
         trainer = pl.Trainer(**self.train_params,
                              checkpoint_callback=self.callback_checkpoint)
         trainer.fit(self, self.train_data, self.valid_data)
-    ######################################
 
+    ######################################
 
 
 if __name__ == '__main__':
@@ -99,6 +103,7 @@ if __name__ == '__main__':
 
     params = params_from_file(cfg_path, 'jsonnet')
     print(json.dumps(dict(params.as_dict()), indent=2), file=sys.stderr)
+    print(f'pytorch_lightning version: {pl.__version__}', file=sys.stderr)
 
     lmt = Experiment.from_params(Params(params=params))
     lmt.run_train()

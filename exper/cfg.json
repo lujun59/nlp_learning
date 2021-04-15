@@ -18,7 +18,7 @@ local str2tensor = {
     "type":"lm_trainer",
     "train_dataloader":{
         "type":"dataloader",
-        "batch_size":10,
+        "batch_size":20,
         "dataset":{
             "type": "iter_text_dataset",
             "reader": {
