@@ -25,7 +25,6 @@ from typing import Any, Dict, List, Tuple, Union, Optional
 
 
 import torch
-import transformers
 
 from allennlp.common import Params, Registrable, Lazy
 from allennlp.common.checks import ConfigurationError
@@ -452,6 +451,9 @@ class AdamWOptimizer(Optimizer, torch.optim.AdamW):
         )
 
 
+'''
+import transformers
+
 @Optimizer.register("huggingface_adamw")
 class HuggingfaceAdamWOptimizer(Optimizer, transformers.AdamW):
     """
@@ -510,7 +512,7 @@ class HuggingfaceAdafactor(Optimizer, transformers.Adafactor):
             relative_step=relative_step,
             warmup_init=warmup_init,
         )
-
+'''
 
 @Optimizer.register("adagrad")
 class AdagradOptimizer(Optimizer, torch.optim.Adagrad):
