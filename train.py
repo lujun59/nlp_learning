@@ -11,7 +11,6 @@ import torch
 import torch.utils.data as torch_data
 
 from allennlp.common import Registrable, Params
-from allennlp.common.util import params_from_file
 from allennlp.optimizers import Optimizer
 
 import utils.simplelogger as simplelogger
@@ -90,8 +89,9 @@ class LMTrain(Experiment):
         return torch.optim.Adam(self.parameters(), lr=1e-4)
 
     def run_train(self, ):
-        trainer = pl.Trainer(**self.train_params,
-                             checkpoint_callback=self.callback_checkpoint)
+        trainer = pl.Trainer(**self.train_params
+                             #checkpoint_callback=self.callback_checkpoint
+                             )
         trainer.fit(self, self.train_data, self.valid_data)
 
     ######################################
@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     cfg_path = sys.argv[1]
 
-    params = params_from_file(cfg_path, 'jsonnet')
+    params = Params.from_file(cfg_path)
     print(json.dumps(dict(params.as_dict()), indent=2), file=sys.stderr)
     print(f'pytorch_lightning version: {pl.__version__}', file=sys.stderr)
 

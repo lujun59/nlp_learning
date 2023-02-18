@@ -16,7 +16,7 @@ class LableSentDataLoader(torch.utils.data.DataLoader, DataLoader):
                  dataset: nnlp.DataSet,
                  collate_fn: nnlp.MakeBatch,
                  batch_size: int = 1,
-                 num_workers: int = 1):
+                 num_workers: int = 0):
         super().__init__(dataset,
                          batch_size=batch_size,
                          collate_fn=collate_fn,

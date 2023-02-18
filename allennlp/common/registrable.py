@@ -3,17 +3,33 @@
 any base class with a named registry for its subclasses and a decorator
 for registering them.
 """
-from collections import defaultdict
-from typing import TypeVar, Type, Callable, Dict, List, Optional, Tuple
 import importlib
 import logging
+import inspect
+from collections import defaultdict
+from typing import (
+    Callable,
+    ClassVar,
+    DefaultDict,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    cast,
+    Any,
+)
 
 from allennlp.common.checks import ConfigurationError
 from allennlp.common.from_params import FromParams
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T", bound="Registrable")
+_T = TypeVar("_T")
+_RegistrableT = TypeVar("_RegistrableT", bound="Registrable")
+
+_SubclassRegistry = Dict[str, Tuple[type, Optional[str]]]
 
 
 class Registrable(FromParams):
@@ -38,11 +54,14 @@ class Registrable(FromParams):
     a subclass to load all other subclasses and the abstract class).
     """
 
-    _registry: Dict[Type, Dict[str, Tuple[Type, Optional[str]]]] = defaultdict(dict)
+    _registry: ClassVar[DefaultDict[type, _SubclassRegistry]] = defaultdict(dict)
+
     default_implementation: Optional[str] = None
 
     @classmethod
-    def register(cls: Type[T], name: str, constructor: str = None, exist_ok: bool = False):
+    def register(
+        cls, name: str, constructor: Optional[str] = None, exist_ok: bool = False
+    ) -> Callable[[Type[_T]], Type[_T]]:
         """
         Register a class under a particular name.
 
@@ -106,7 +125,7 @@ class Registrable(FromParams):
         """
         registry = Registrable._registry[cls]
 
-        def add_subclass_to_registry(subclass: Type[T]):
+        def add_subclass_to_registry(subclass: Type[_T]) -> Type[_T]:
             # Add to registry, raise an error if key has already been used.
             if name in registry:
                 if exist_ok:
@@ -127,7 +146,7 @@ class Registrable(FromParams):
         return add_subclass_to_registry
 
     @classmethod
-    def by_name(cls: Type[T], name: str) -> Callable[..., T]:
+    def by_name(cls: Type[_RegistrableT], name: str) -> Callable[..., _RegistrableT]:
         """
         Returns a callable function that constructs an argument of the registered class.  Because
         you can register particular functions as constructors for specific names, this isn't
@@ -136,12 +155,14 @@ class Registrable(FromParams):
         logger.debug(f"instantiating registered subclass {name} of {cls}")
         subclass, constructor = cls.resolve_class_name(name)
         if not constructor:
-            return subclass
+            return cast(Type[_RegistrableT], subclass)
         else:
-            return getattr(subclass, constructor)
+            return cast(Callable[..., _RegistrableT], getattr(subclass, constructor))
 
     @classmethod
-    def resolve_class_name(cls: Type[T], name: str) -> Tuple[Type[T], Optional[str]]:
+    def resolve_class_name(
+        cls: Type[_RegistrableT], name: str
+    ) -> Tuple[Type[_RegistrableT], Optional[str]]:
         """
         Returns the subclass that corresponds to the given `name`, along with the name of the
         method that was registered as a constructor for that `name`, if any.
@@ -181,10 +202,18 @@ class Registrable(FromParams):
 
         else:
             # is not a qualified class name
+            available = cls.list_available()
+            suggestion = _get_suggestion(name, available)
             raise ConfigurationError(
-                f"{name} is not a registered name for {cls.__name__}. "
-                "You probably need to use the --include-package flag "
-                "to load your custom code. Alternatively, you can specify your choices "
+                (
+                    f"'{name}' is not a registered name for '{cls.__name__}'"
+                    + (". " if not suggestion else f", did you mean '{suggestion}'? ")
+                )
+                + "If your registered class comes from custom code, you'll need to import "
+                "the corresponding modules. If you're using AllenNLP from the command-line, "
+                "this is done by using the '--include-package' flag, or by specifying your imports "
+                "in a '.allennlp_plugins' file. "
+                "Alternatively, you can specify your choices "
                 """using fully-qualified paths, e.g. {"model": "my_module.models.MyModel"} """
                 "in which case they will be automatically imported correctly."
             )
@@ -201,3 +230,91 @@ class Registrable(FromParams):
             raise ConfigurationError(f"Default implementation {default} is not registered")
         else:
             return [default] + [k for k in keys if k != default]
+
+    def _to_params(self) -> Dict[str, Any]:
+        """
+        Default behavior to get a params dictionary from a registrable class
+        that does NOT have a _to_params implementation. It is NOT recommended to
+         use this method. Rather this method is a minial implementation that
+         exists so that calling `_to_params` does not break.
+
+        # Returns
+
+        parameter_dict: `Dict[str, Any]`
+            A minimal parameter dictionary for a given registrable class. Will
+            get the registered name and return that as well as any positional
+            arguments it can find the value of.
+
+        """
+        logger.warning(
+            f"'{self.__class__.__name__}' does not implement '_to_params`. Will"
+            f" use Registrable's `_to_params`."
+        )
+
+        # Get the list of parent classes in the MRO in order to check where to
+        # look for the registered name. Skip the first because that is the
+        # current class.
+        mro = inspect.getmro(self.__class__)[1:]
+
+        registered_name = None
+        for parent in mro:
+            # Check if Parent has any registered classes
+            try:
+                registered_classes = self._registry[parent]
+            except KeyError:
+                continue
+
+            # Found a dict of (name,(class,constructor)) pairs. Check if the
+            # current class is in it.
+            for name, registered_value in registered_classes.items():
+                registered_class, _ = registered_value
+                if registered_class == self.__class__:
+                    registered_name = name
+                    break
+
+            # Extra break to end the top loop.
+            if registered_name is not None:
+                break
+
+        if registered_name is None:
+            raise KeyError(f"'{self.__class__.__name__}' is not registered")
+
+        parameter_dict = {"type": registered_name}
+
+        # Get the parameters from the init function.
+        for parameter in inspect.signature(self.__class__).parameters.values():
+            # Skip non-positional arguments. For simplicity, these are arguments
+            # without a default value as those will be required for the
+            # `from_params` method.
+            if parameter.default != inspect.Parameter.empty:
+                logger.debug(f"Skipping parameter {parameter.name}")
+                continue
+
+            # Try to get the value of the parameter from the class. Will only
+            # try 'name' and '_name'. If it is not there, the parameter is not
+            # added to the returned dict.
+            if hasattr(self, parameter.name):
+                parameter_dict[parameter.name] = getattr(self, parameter.name)
+            elif hasattr(self, f"_{parameter.name}"):
+                parameter_dict[parameter.name] = getattr(self, f"_{parameter.name}")
+            else:
+                logger.warning(f"Could not find a value for positional argument {parameter.name}")
+                continue
+
+        return parameter_dict
+
+
+def _get_suggestion(name: str, available: List[str]) -> Optional[str]:
+    # First check for simple mistakes like using '-' instead of '_', or vice-versa.
+    for ch, repl_ch in (("_", "-"), ("-", "_")):
+        suggestion = name.replace(ch, repl_ch)
+        if suggestion in available:
+            return suggestion
+    # If we still haven't found a reasonable suggestion, we return the first suggestion
+    # with an edit distance (with transpositions allowed) of 1 to `name`.
+    from nltk.metrics.distance import edit_distance
+
+    for suggestion in available:
+        if edit_distance(name, suggestion, transpositions=True) == 1:
+            return suggestion
+    return None

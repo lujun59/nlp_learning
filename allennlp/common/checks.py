@@ -5,7 +5,7 @@ AllenNLP and its models are configured correctly.
 import logging
 import re
 import subprocess
-from typing import List, Union
+from typing import Any, List, Tuple, Union
 
 import torch
 from torch import cuda
@@ -19,13 +19,14 @@ class ConfigurationError(Exception):
     (e.g. missing properties, invalid properties, unknown properties).
     """
 
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+        return type(self), (self.message,)
+
     def __init__(self, message: str):
         super().__init__()
         self.message = message
 
     def __str__(self):
-        # TODO(brendanr): Is there some reason why we need repr here? It
-        # produces horrible output for simple multi-line error messages.
         return self.message
 
 
@@ -107,28 +108,22 @@ def check_for_gpu(device: Union[int, torch.device, List[Union[int, torch.device]
     elif device is None:
         return
     else:
-        from allennlp.common.util import int_to_device
+
+        def int_to_device(device: Union[int, torch.device]) -> torch.device:
+            if isinstance(device, torch.device):
+                return device
+            if device < 0:
+                return torch.device("cpu")
+            return torch.device(device)
 
         device = int_to_device(device)
         if device != torch.device("cpu"):
             num_devices_available = cuda.device_count()
             if num_devices_available == 0:
-                # Torch will give a more informative exception than ours, so we want to include
-                # that context as well if it's available.  For example, if you try to run torch 1.5
-                # on a machine with CUDA10.1 you'll get the following:
-                #
-                #     The NVIDIA driver on your system is too old (found version 10010).
-                #
-                torch_gpu_error = ""
-                try:
-                    cuda._check_driver()
-                except Exception as e:
-                    torch_gpu_error = "\n{0}".format(e)
-
                 raise ConfigurationError(
                     "Experiment specified a GPU but none is available;"
                     " if you want to run on CPU use the override"
-                    " 'trainer.cuda_device=-1' in the json config file." + torch_gpu_error
+                    " 'trainer.cuda_device=-1' in the json config file."
                 )
             elif device.index >= num_devices_available:
                 raise ConfigurationError(

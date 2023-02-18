@@ -1,4 +1,5 @@
 import sys
+
 from allennlp.common import Registrable
 
 
@@ -16,6 +17,23 @@ class SpaceTokenizer(Tokenizer):
         if self.lowercase:
             text = text.lower()
         return text.split()
+
+
+@Tokenizer.register('cjk_char_split')
+class CJKCharSplitter(Tokenizer):
+    def __init__(self, lowercase: bool = False):
+        self.lowercase = lowercase
+
+    def __call__(self, text: str):
+        if self.lowercase:
+            text = text.lower()
+        res_str = ''
+        for ch in text:
+            if 0x4e00 <= ord(ch) <= 0x9fa5:
+                res_str += ' ' + ch + ' '
+            else:
+                res_str += ch
+        return res_str.strip().split()
 
 
 @Tokenizer.register('sentencepiece_tokenizer')
@@ -55,7 +73,7 @@ if __name__ == '__main__':
     import sys
     from allennlp.common import Params
 
-    p = Params(params={'type': 'zh_jieba_tokenizer', 'lowercase': False})
+    p = Params(params={'type': 'cjk_char_split', 'lowercase': False})
     toker = Tokenizer.from_params(params=p)
     for line in sys.stdin:
         print(' '.join(toker(line.strip())))

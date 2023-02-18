@@ -8,9 +8,9 @@ local str2tensor = {
     "type": "label_sent2tensor",
     "vocab":vocab_cfg,
     "tokenizer":{
-        "type": "space_tokenizer"
+        "type": "cjk_char_split"
     },
-    "max_len": 80, 
+    "max_len": 80,
     "with_lable":false
 };
 
@@ -23,7 +23,7 @@ local str2tensor = {
             "type": "iter_text_dataset",
             "reader": {
                 "type": "text_line_reader",
-                "path": "./wd/zh_train.txt"
+                "path": "./wd/train.txt"
             },
             "str2tensor_fn": str2tensor
         },
@@ -38,7 +38,7 @@ local str2tensor = {
             "type": "iter_text_dataset",
             "reader": {
                 "type": "text_line_reader",
-                "path": "./wd/zh_valid.txt"
+                "path": "./wd/valid.txt"
             },
             "str2tensor_fn": str2tensor
         },
@@ -52,14 +52,14 @@ local str2tensor = {
         "vocab": vocab_cfg,
         "n_layer": 2
     },
-    
+
     "out_path":"out",
 
     "train_params":{
-        "gpus": 1,
-        "auto_select_gpus":true,
-        
-        "accelerator": "ddp",
+        #"gpus": -1,
+        #"auto_select_gpus":true,
+
+        "accelerator": "cpu",
         "max_epochs":1,
         "val_check_interval": 200,
         "accumulate_grad_batches": 4,

@@ -6,6 +6,9 @@ from typing import Union
 
 import sys
 
+class SigTermReceived(Exception):
+    pass
+
 
 class AllenNlpLogger(logging.Logger):
     """
@@ -83,9 +86,9 @@ def prepare_global_logging(
         formatter = logging.Formatter(
             f"{rank} | %(asctime)s - %(levelname)s - %(name)s - %(message)s"
         )
-    file_handler = logging.FileHandler(log_file)
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stderr_handler = logging.StreamHandler(sys.stderr)
+    file_handler: logging.Handler = logging.FileHandler(log_file)
+    stdout_handler: logging.Handler = logging.StreamHandler(sys.stdout)
+    stderr_handler: logging.Handler = logging.StreamHandler(sys.stderr)
 
     handler: logging.Handler
     for handler in [file_handler, stdout_handler, stderr_handler]:
@@ -113,17 +116,14 @@ def prepare_global_logging(
         root_logger.addHandler(stdout_handler)
         root_logger.addHandler(stderr_handler)
 
+
     # write uncaught exceptions to the logs
     def excepthook(exctype, value, traceback):
-        # For a KeyboardInterrupt, call the original exception handler.
-        if issubclass(exctype, KeyboardInterrupt):
+        # For interruptions, call the original exception handler.
+        if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
             sys.__excepthook__(exctype, value, traceback)
             return
         root_logger.critical("Uncaught exception", exc_info=(exctype, value, traceback))
 
     sys.excepthook = excepthook
 
-    # also log tqdm
-    from allennlp.common.tqdm import logger as tqdm_logger
-
-    tqdm_logger.addHandler(file_handler)
